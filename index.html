@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calorie Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      /* Default Theme (Papas) */
+      --bg: #0b1020;
+      --card: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.68);
+      --muted2: rgba(255,255,255,.54);
+      
+      --primary: #3b82f6; /* Blue for Papas */
+      --primary-glow: rgba(59,130,246,0.5);
+      
+      --success: #22c55e;
+      --danger: #ef4444;
+
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+
+    /* Dedes Theme Override */
+    body.theme-dedes {
+      --primary: #ec4899; /* Pink for Dedes */
+      --primary-glow: rgba(236, 72, 153, 0.5);
+    }
+
+    *{ box-sizing:border-box; }
+    
+    html {
+        /* Fix for scrolling issue */
+        min-height: 100%;
+    }
+
+    body{
+      margin:0;
+      min-height: 100vh; /* Ensure body takes full height */
+      color:var(--text);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      
+      /* Fixed background prevents breaking on scroll */
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(1200px 700px at 20% 0%, rgba(59,130,246,.15), transparent 60%),
+        radial-gradient(900px 600px at 80% 20%, rgba(236, 72, 153,.15), transparent 60%);
+      background-attachment: fixed;
+      transition: background 0.3s ease;
+    }
+
+    /* Dedes background variant */
+    body.theme-dedes {
+      background-image: 
+        radial-gradient(1200px 700px at 20% 0%, rgba(236, 72, 153,.20), transparent 60%),
+        radial-gradient(900px 600px at 80% 20%, rgba(59,130,246,.10), transparent 60%);
+    }
+
+    .wrap{
+      max-width: 1050px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+
+    /* Header & User Switcher */
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .logo{
+      width:40px;height:40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      box-shadow: 0 0 15px var(--primary-glow);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:bold;
+      font-size:18px;
+      color:white;
+      transition: all 0.3s ease;
+    }
+
+    .user-switch {
+        background: rgba(255,255,255,0.1);
+        border-radius: 20px;
+        padding: 4px;
+        display: flex;
+        gap: 4px;
+        border: 1px solid var(--stroke);
+    }
+    .user-btn {
+        padding: 6px 16px;
+        border-radius: 16px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .user-btn.active {
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 2px 10px var(--primary-glow);
+    }
+
+    /* Cards */
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 16px;
+      align-items:start;
+    }
+    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; } }
+
+    .card{
+      background: linear-gradient(180deg, var(--card), rgba(255,255,255,.02));
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card-header{
+      padding: 16px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 12px;
+    }
+    .card-header h2{ margin:0; font-size: 16px; }
+    .card-header .sub{ margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .card-body{ padding: 16px; }
+    .card-footer{
+      padding: 12px 16px;
+      border-top: 1px solid var(--stroke);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 10px;
+      flex-wrap:wrap;
+    }
+
+    /* Inputs */
+    label{ display:block; font-weight:600; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input, select, textarea{
+      width:100%; padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.2);
+      color: var(--text);
+      outline:none;
+    }
+    input:focus, textarea:focus, select:focus{
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-glow);
+    }
+
+    .row{ display:flex; gap: 10px; flex-wrap: wrap; }
+    .col{ flex:1; min-width: 140px; }
+
+    /* Buttons */
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding: 10px 14px; border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+      color: var(--text); cursor:pointer; font-weight: 600; font-size: 13px;
+      transition: all 0.15s ease;
+    }
+    .btn:hover{ background: rgba(255,255,255,.1); }
+    .btn.primary{
+      background: var(--primary);
+      border-color: transparent;
+      color: white;
+    }
+    .btn.primary:hover{ opacity: 0.9; }
+    .btn.danger{ border-color: rgba(239,68,68,.4); color: #fca5a5; }
+    .btn.danger:hover{ background: rgba(239,68,68,.15); }
+    .btn.ghost{ background: transparent; border-color: transparent; }
+
+    /* Segmented Control */
+    .segmented{
+      display:flex; gap: 4px; padding: 4px;
+      border-radius: 12px; background: rgba(0,0,0,.2);
+    }
+    .segmented button{
+      flex:1; padding: 6px 10px; border:none; background:transparent;
+      color: var(--muted); border-radius: 8px; cursor:pointer; font-size: 12px; font-weight:700;
+    }
+    .segmented button.active{
+      background: var(--stroke); color: white;
+    }
+    .segmented button:hover:not(.active) { color: white; }
+
+    /* Stats Chips */
+    .stats{ display:flex; gap: 10px; flex-wrap:wrap; }
+    .chip{
+      flex:1; min-width: 100px;
+      padding: 12px; border-radius: 14px;
+      border: 1px solid var(--stroke); background: rgba(255,255,255,.03);
+    }
+    .chip .k{ font-size:11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; }
+    .chip .v{ font-size:20px; font-weight: 800; margin-top: 4px; }
+
+    /* Table */
+    .table-wrap{ overflow-x:auto; border-radius: 14px; border: 1px solid var(--stroke); }
+    table{ width:100%; border-collapse: collapse; min-width: 500px; }
+    th, td{ padding: 12px; border-bottom: 1px solid var(--stroke); text-align:left; font-size: 13px; }
+    th{ background: rgba(0,0,0,.3); color: var(--muted); font-size: 11px; text-transform: uppercase; }
+    td button.sm-btn { padding: 4px 8px; font-size: 11px; border-radius: 6px; }
+
+    /* Utility */
+    .icon{ width:16px; height:16px; }
+    .help { font-size: 12px; color: var(--muted2); margin-top: 6px; }
+    
+    /* Toast */
+    .toast{
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #1f2937; color: white; padding: 10px 20px; border-radius: 30px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: all 0.3s ease;
+      z-index: 999; font-size: 13px; font-weight: 600; border: 1px solid var(--stroke);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  </style>
+</head>
+
+<body id="body">
+  <div class="wrap">
+    
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" id="appLogo">P</div>
+        <div>
+          <h1 style="margin:0; font-size:18px;">Calorie Tracker</h1>
+          <p style="margin:0; font-size:12px; color:var(--muted);">Welcome back, <span id="userNameDisplay">Papas</span></p>
+        </div>
+      </div>
+
+      <div class="user-switch">
+        <button class="user-btn active" id="btnPapas" onclick="switchUser('Papas')">Papas</button>
+        <button class="user-btn" id="btnDedes" onclick="switchUser('Dedes')">Dedes</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2>Add Entry</h2>
+              <div class="sub">Log meal & calories manually.</div>
+            </div>
+            <div class="segmented">
+              <button class="active" onclick="setQuick(0, this)">Custom</button>
+              <button onclick="setQuick(200, this)">+200</button>
+              <button onclick="setQuick(400, this)">+400</button>
+              <button onclick="setQuick(600, this)">+600</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col">
+                <label>Date</label>
+                <input type="date" id="dateInput">
+              </div>
+              <div class="col">
+                <label>Calories</label>
+                <input type="number" id="caloriesInput" placeholder="e.g. 500">
+              </div>
+            </div>
+            <div style="margin-top:12px;">
+              <label>Notes (Optional)</label>
+              <textarea id="mealNote" rows="1" placeholder="What did you eat?"></textarea>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn primary" onclick="addEntry()">Save Entry</button>
+            <button class="btn ghost" onclick="setToday()">Set Today</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Trend (Last 30 Days)</h2>
+          </div>
+          <div class="card-body">
+            <canvas id="calorieChart" height="120"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>History</h2>
+            <button class="btn ghost sm-btn" style="padding:4px 8px; font-size:12px;" onclick="exportData()">Export JSON</button>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap" style="border:none; border-radius:0;">
+              <table id="historyTable">
+                <thead><tr><th>Date</th><th>Kcal</th><th>Note</th><th>Action</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div id="emptyState" style="padding:20px; text-align:center; color:var(--muted); font-size:13px;">No entries for this user yet.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        
+        <div class="card">
+          <div class="card-header">
+            <h2>Insights</h2>
+          </div>
+          <div class="card-body">
+            <div class="stats">
+              <div class="chip">
+                <div class="k">Today</div>
+                <div class="v" id="statToday">0</div>
+              </div>
+              <div class="chip">
+                <div class="k">7-Day Avg</div>
+                <div class="v" id="statAvg">0</div>
+              </div>
+            </div>
+            
+            <hr style="border:0; border-top:1px solid var(--stroke); margin:16px 0;">
+            
+            <label>Daily Target</label>
+            <div style="display:flex; gap:8px;">
+              <input type="number" id="targetInput" placeholder="Set Goal (e.g. 2000)">
+              <button class="btn" onclick="saveTarget()">Set</button>
+            </div>
+            <div class="help" id="targetFeedback">Set a goal to see progress.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <h3 style="margin:0 0 10px 0; font-size:14px;">Data Management</h3>
+            <p style="margin:0 0 10px 0; font-size:12px; color:var(--muted); line-height:1.4;">
+              Data is saved separately for Papas and Dedes in this browser. 
+            </p>
+            <button class="btn danger" style="width:100%" onclick="clearUserdata()">Clear Current User Data</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Saved!</div>
+
+  <script>
+    // --- STATE ---
+    let currentUser = localStorage.getItem('activeUser') || 'Papas'; // Default to Papas
+    let entries = [];
+    let chartInstance = null;
+
+    // --- INIT ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Set initial UI state based on loaded user
+        switchUser(currentUser, false); 
+        document.getElementById('dateInput').valueAsDate = new Date();
+    });
+
+    // --- USER SWITCHING LOGIC ---
+    function switchUser(user, reload = true) {
+        currentUser = user;
+        localStorage.setItem('activeUser', user);
+
+        // Update UI Tabs
+        document.getElementById('btnPapas').className = user === 'Papas' ? 'user-btn active' : 'user-btn';
+        document.getElementById('btnDedes').className = user === 'Dedes' ? 'user-btn active' : 'user-btn';
+        
+        // Update Theme
+        const body = document.getElementById('body');
+        const logo = document.getElementById('appLogo');
+        const nameDisplay = document.getElementById('userNameDisplay');
+        
+        nameDisplay.textContent = user;
+        logo.textContent = user.charAt(0);
+
+        if(user === 'Dedes') {
+            body.classList.add('theme-dedes');
+        } else {
+            body.classList.remove('theme-dedes');
+        }
+
+        // Load User Data
+        loadData();
+    }
+
+    // --- DATA HANDLING ---
+    function getStorageKey(key) {
+        // Creates unique keys like "Papas_entries" or "Dedes_entries"
+        return `${currentUser}_${key}`;
+    }
+
+    function loadData() {
+        const key = getStorageKey('entries');
+        const targetKey = getStorageKey('target');
+        
+        entries = JSON.parse(localStorage.getItem(key)) || [];
+        const target = localStorage.getItem(targetKey) || '';
+        
+        document.getElementById('targetInput').value = target;
+        
+        renderTable();
+        renderChart();
+        updateStats();
+    }
+
+    function addEntry() {
+        const date = document.getElementById('dateInput').value;
+        const cals = parseInt(document.getElementById('caloriesInput').value);
+        const note = document.getElementById('mealNote').value;
+
+        if(!date || isNaN(cals)) {
+            showToast("Please enter date and calories");
+            return;
+        }
+
+        const newEntry = {
+            id: Date.now(),
+            date: date,
+            calories: cals,
+            note: note
+        };
+
+        entries.push(newEntry);
+        saveEntries();
+        
+        // Reset inputs
+        document.getElementById('caloriesInput').value = '';
+        document.getElementById('mealNote').value = '';
+        showToast("Entry Added!");
+    }
+
+    function deleteEntry(id) {
+        if(confirm("Delete this entry?")) {
+            entries = entries.filter(e => e.id !== id);
+            saveEntries();
+        }
+    }
+
+    function saveEntries() {
+        localStorage.setItem(getStorageKey('entries'), JSON.stringify(entries));
+        renderTable();
+        renderChart();
+        updateStats();
+    }
+
+    function saveTarget() {
+        const val = document.getElementById('targetInput').value;
+        localStorage.setItem(getStorageKey('target'), val);
+        updateStats();
+        showToast("Target Saved");
+    }
+
+    function clearUserdata() {
+        if(confirm(`Are you sure you want to delete ALL data for ${currentUser}?`)) {
+            localStorage.removeItem(getStorageKey('entries'));
+            localStorage.removeItem(getStorageKey('target'));
+            entries = [];
+            loadData();
+            showToast("Data Cleared");
+        }
+    }
+
+    // --- UI HELPERS ---
+    function setQuick(amount, btn) {
+        // Visual toggle
+        document.querySelectorAll('.segmented button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        if(amount > 0) {
+            const current = document.getElementById('caloriesInput').value;
+            const val = current ? parseInt(current) : 0;
+            document.getElementById('caloriesInput').value = val + amount;
+        }
+    }
+
+    function setToday() {
+        document.getElementById('dateInput').valueAsDate = new Date();
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // --- VISUALIZATION ---
+    function renderTable() {
+        const tbody = document.querySelector('#historyTable tbody');
+        tbody.innerHTML = '';
+        const empty = document.getElementById('emptyState');
+
+        // Sort by date descending
+        const sorted = [...entries].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+        if(sorted.length === 0) {
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+
+        sorted.forEach(e => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${e.date}</td>
+                <td style="font-weight:bold;">${e.calories}</td>
+                <td style="color:var(--muted); font-size:12px;">${e.note || '-'}</td>
+                <td><button class="btn danger sm-btn" onclick="deleteEntry(${e.id})">X</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderChart() {
+        const ctx = document.getElementById('calorieChart').getContext('2d');
+        
+        // Group by Date
+        const grouped = {};
+        entries.forEach(e => {
+            grouped[e.date] = (grouped[e.date] || 0) + e.calories;
+        });
+
+        // Get last 30 days logic
+        const labels = Object.keys(grouped).sort();
+        const dataPoints = labels.map(d => grouped[d]);
+
+        // Define Color based on user
+        const color = currentUser === 'Dedes' ? '#ec4899' : '#3b82f6';
+        const bg = currentUser === 'Dedes' ? 'rgba(236, 72, 153, 0.2)' : 'rgba(59,130,246,0.2)';
+
+        if(chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Daily Kcal',
+                    data: dataPoints,
+                    borderColor: color,
+                    backgroundColor: bg,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { color: '#6b7280' }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { color: '#6b7280' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function updateStats() {
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        // Today Total
+        const todayTotal = entries
+            .filter(e => e.date === todayStr)
+            .reduce((sum, e) => sum + e.calories, 0);
+
+        document.getElementById('statToday').innerText = todayTotal;
+
+        // 7 Day Avg
+        // Calculate distinct days in entries
+        const uniqueDays = [...new Set(entries.map(e => e.date))];
+        const totalCals = entries.reduce((sum, e) => sum + e.calories, 0);
+        const avg = uniqueDays.length ? Math.round(totalCals / uniqueDays.length) : 0;
+        
+        document.getElementById('statAvg').innerText = avg;
+
+        // Target comparison
+        const target = parseInt(document.getElementById('targetInput').value) || 0;
+        const fb = document.getElementById('targetFeedback');
+        
+        if(target > 0) {
+            const diff = target - todayTotal;
+            if(diff > 0) fb.innerHTML = `${diff} kcal remaining`;
+            else fb.innerHTML = `<span style="color:var(--danger)">Over by ${Math.abs(diff)} kcal</span>`;
+        } else {
+            fb.innerText = "Set a goal to see progress.";
+        }
+    }
+
+    function exportData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(entries));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `${currentUser}_calories.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+  </script>
+</body>
+</html>
